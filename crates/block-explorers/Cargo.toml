@@ -30,7 +30,7 @@ alloy-primitives = { workspace = true, default-features = false, features = [
     "serde",
 ] }
 
-reqwest = { workspace = true, default-features = false, features = ["json"] }
+reqwest = { workspace = true, default-features = false, features = ["json","rustls-tls"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 thiserror = "1.0"
@@ -39,6 +39,7 @@ semver = "1.0"
 
 foundry-compilers = { version = "0.12", optional = true }
 serde_urlencoded = "0.7.1"
+tokio = "1.42.0"
 
 [dev-dependencies]
 tempfile = "3.8"

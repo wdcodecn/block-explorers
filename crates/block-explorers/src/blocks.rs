@@ -1,6 +1,7 @@
 use crate::{block_number::BlockNumber, Client, EtherscanError, Response, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use tokio::time::{sleep, Duration};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[allow(missing_copy_implementations)]
@@ -74,15 +75,22 @@ impl Client {
                 ("topic0_1_opr", "and".to_string()),
             ]),
         );
+        // 失败了 添加重试
         let response1: Response<Vec<LogEntry>> = self.get_json(&query1).await?;
 
         let result1 = match response1.status.as_str() {
-            "0" => Err(EtherscanError::BlockNumberByTimestampFailed),
+            "0" => {
+                if response1.message == "No records found" {
+                    Ok(vec![])
+                } else {
+                    Err(EtherscanError::BlockNumberByTimestampFailed)
+                }
+            }
             "1" => Ok(response1.result),
             err => Err(EtherscanError::BadStatusCode(err.to_string())),
         };
 
-
+        println!("result1: {:?}", result1);
 
         let query2 = self.create_query(
             "logs",
@@ -98,45 +106,57 @@ impl Client {
         );
         // 添加 tokio sleep
 
+        sleep(Duration::from_millis(500)).await;
+        println!("500 ms have elapsed");
 
         let response2: Response<Vec<LogEntry>> = self.get_json(&query2).await?;
 
         let result2 = match response2.status.as_str() {
-            "0" => Err(EtherscanError::BlockNumberByTimestampFailed),
+            "0" => {
+                if response2.message == "No records found" {
+                    Ok(vec![])
+                } else {
+                    Err(EtherscanError::BlockNumberByTimestampFailed)
+                }
+            }
+
             "1" => Ok(response2.result),
             err => Err(EtherscanError::BadStatusCode(err.to_string())),
         };
+        println!("result2: {:?}", result2);
 
         // 合并结果
-        let mut result = result1?;
-        result.extend(result2?);
+        let mut result1: Vec<LogEntry> = result1.unwrap_or(vec![]);
+        let mut result2: Vec<LogEntry> = result2.unwrap_or(vec![]);
+
+        result1.extend(result2.clone());
 
         // 通过  block_number  log_index 排序 升序
-
-        result.sort_by(|a, b| {
+        // if !&result1.is_empty() && !&result2.is_empty() {
+        result1.sort_by(|a, b| {
             let a_block_number = a.block_number.parse::<u64>().unwrap();
             let b_block_number = b.block_number.parse::<u64>().unwrap();
             let a_log_index = a.log_index.parse::<u64>().unwrap();
             let b_log_index = b.log_index.parse::<u64>().unwrap();
             a_block_number.cmp(&b_block_number).then(a_log_index.cmp(&b_log_index))
         });
-
-        Ok(result)
+        // }
+        Ok(result1)
     }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LogEntry {
-    address: String,
-    topics: Vec<String>,
-    data: String,
-    block_number: String,
-    block_hash: String,
-    time_stamp: String,
-    gas_price: String,
-    gas_used: String,
-    log_index: String,
-    transaction_hash: String,
-    transaction_index: String,
+    pub address: String,
+    pub topics: Vec<String>,
+    pub data: String,
+    pub block_number: String,
+    pub block_hash: String,
+    pub time_stamp: String,
+    pub gas_price: String,
+    pub gas_used: String,
+    pub log_index: String,
+    pub transaction_hash: String,
+    pub transaction_index: String,
 }
