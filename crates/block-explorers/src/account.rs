@@ -14,6 +14,7 @@ use std::{
     collections::HashMap,
     fmt::{Display, Error, Formatter},
 };
+use alloy_chains::Chain;
 
 /// The raw response from the balance-related API endpoints
 #[derive(Clone, Debug, Serialize, Deserialize)]

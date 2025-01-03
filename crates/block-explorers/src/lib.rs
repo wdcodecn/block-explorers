@@ -191,12 +191,24 @@ impl Client {
 
     /// Execute a GET request with parameters, without sanity checking the response.
     async fn get<Q: Serialize>(&self, query: &Q) -> Result<String> {
-        trace!(target: "etherscan", "GET {}", self.etherscan_api_url);
-        let response = self
+
+        // 拼接请求 URL 和查询参数
+        let url_with_query = format!(
+            "{}?{}",
+            self.etherscan_api_url,
+            serde_urlencoded::to_string(query).unwrap()
+        );
+
+        // 打印完整的请求 URL
+        trace!(target: "etherscan", "GET {}", url_with_query);
+
+        let builder = self
             .client
             .get(self.etherscan_api_url.clone())
             .header(header::ACCEPT, "application/json")
-            .query(query)
+            .query(query);
+
+        let response = builder
             .send()
             .await?
             .text()
